@@ -32,6 +32,7 @@ class FileActivity : BaseActivity() {
         const val EXTRA_MODE = "mode"
         const val EXTRA_TYPE = "type"
         const val EXTRA_PATH = "path"
+        const val EXTRA_EXTENSION = "extension"
         const val MODE_OPEN = "open"
         const val MODE_CREATE = "create"
         const val TYPE_SETTINGS = "settings"
@@ -53,7 +54,10 @@ class FileActivity : BaseActivity() {
     private val mode by lazy { intent.getStringExtra(EXTRA_MODE) ?: MODE_OPEN }
     private val type by lazy { intent.getStringExtra(EXTRA_TYPE) ?: TYPE_SETTINGS }
     private val mimeType get() = if (type == TYPE_LOGS) "text/plain" else "application/json"
-    private val extension get() = if (type == TYPE_LOGS) "log" else "json"
+
+    // Для импорта стратегий расширение задаётся вызывающим, иначе прежние значения.
+    private val extension: String
+        get() = intent.getStringExtra(EXTRA_EXTENSION) ?: if (type == TYPE_LOGS) "log" else "json"
     private val defaultFileName by lazy {
         val format = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault())
         val prefix = when (type) {

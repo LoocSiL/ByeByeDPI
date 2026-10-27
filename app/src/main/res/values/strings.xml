@@ -26,8 +26,8 @@
     <string name="reset_settings">Сбросить настройки</string>
     <string name="test_settings_import_file">Импорт стратегий из файла</string>
     <string name="test_settings_export_file">Экспорт стратегий в файл</string>
-    <string name="import_file_summary_loaded">Файл: %1$s</string>
-    <string name="import_file_summary_empty">Файл strategies.txt не найден — будут использоваться команды из поля ниже</string>
+    <string name="import_file_summary_loaded">Загружено из файла: %1$d байт</string>
+    <string name="import_file_summary_empty">Файл стратегий не загружен — используются команды из поля ниже</string>
     <string name="import_file_done">Импортировано стратегий: %1$d</string>
     <string name="import_file_empty">В файле нет рабочих стратегий</string>
     <string name="import_file_failed">Не удалось прочитать файл</string>

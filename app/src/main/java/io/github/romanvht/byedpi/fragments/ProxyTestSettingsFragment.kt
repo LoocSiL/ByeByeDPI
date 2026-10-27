@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.preference.*
 import io.github.romanvht.byedpi.R
+import io.github.romanvht.byedpi.activities.FileActivity
 import io.github.romanvht.byedpi.utility.*
 import java.io.File
 
@@ -31,10 +32,10 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
     private val pickStrategies = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val uri = result.data?.data
-        if (result.resultCode == android.app.Activity.RESULT_OK && uri != null) {
-            importFrom(uri)
-        }
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val path = data.getStringExtra(FileActivity.EXTRA_PATH) ?: return@registerForActivityResult
+        importFrom(File(path))
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -95,7 +96,7 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         val strategiesFile = File(requireContext().getExternalFilesDir(null), STRATEGIES_FILE)
         val hasFile = strategiesFile.exists() && strategiesFile.length() > 0
         importFile?.summary = if (hasFile) {
-            getString(R.string.import_file_summary_loaded, strategiesFile.absolutePath)
+            getString(R.string.import_file_summary_loaded, strategiesFile.length())
         } else {
             getString(R.string.import_file_summary_empty)
         }
@@ -103,23 +104,21 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun startImport() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-            type = "text/plain"
-            addCategory(Intent.CATEGORY_OPENABLE)
+        // Встроенный браузер файлов приложения: на телевизорах часто нет
+        // системного выбора документов, поэтому ACTION_GET_CONTENT не годится.
+        val intent = Intent(requireContext(), FileActivity::class.java).apply {
+            putExtra(FileActivity.EXTRA_MODE, FileActivity.MODE_OPEN)
+            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_RESULTS)
+            putExtra(FileActivity.EXTRA_EXTENSION, "txt")
         }
-        try {
-            pickStrategies.launch(intent)
-        } catch (exception: Exception) {
-            Log.e(TAG, "Failed to open document picker", exception)
-            Toast.makeText(requireContext(), R.string.file_picker_unavailable, Toast.LENGTH_LONG).show()
-        }
+        pickStrategies.launch(intent)
     }
 
-    private fun importFrom(uri: Uri) {
+    private fun importFrom(file: File) {
         val context = requireContext()
         try {
-            val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-            if (text.isNullOrBlank()) {
+            val text = file.readText().replace("\r\n", "\n")
+            if (text.isBlank()) {
                 Toast.makeText(context, R.string.import_file_empty, Toast.LENGTH_SHORT).show()
                 return
             }
@@ -146,17 +145,23 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun exportToFile() {
-        val context = requireContext()
-        val target = File(context.getExternalFilesDir(null), STRATEGIES_FILE)
+    private val saveStrategies = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val path = data.getStringExtra(FileActivity.EXTRA_PATH) ?: return@registerForActivityResult
+        val uri = data.data
         val content = sharedPreferences?.getString("byedpi_proxytest_commands", "").orEmpty()
-        if (content.isBlank()) {
-            Toast.makeText(context, R.string.export_file_empty, Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (content.isBlank()) return@registerForActivityResult
+        val context = requireContext()
         try {
-            target.parentFile?.mkdirs()
-            target.writeText(content)
+            val target = File(path)
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
+            } else {
+                target.writeText(content)
+            }
             AlertDialog.Builder(context)
                 .setTitle(R.string.test_settings_export_file)
                 .setMessage(getString(R.string.export_file_done, target.absolutePath))
@@ -167,6 +172,23 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
             Log.e(TAG, "Failed to export strategies", exception)
             Toast.makeText(context, R.string.export_file_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun exportToFile() {
+        val context = requireContext()
+        val content = sharedPreferences?.getString("byedpi_proxytest_commands", "").orEmpty()
+        if (content.isBlank()) {
+            Toast.makeText(context, R.string.export_file_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Сохраняем через встроенный браузер файлов: можно выбрать любую папку,
+        // включая Documents, и файл будет доступен вне приватной папки приложения.
+        val intent = Intent(context, FileActivity::class.java).apply {
+            putExtra(FileActivity.EXTRA_MODE, FileActivity.MODE_CREATE)
+            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_RESULTS)
+            putExtra(FileActivity.EXTRA_EXTENSION, "txt")
+        }
+        saveStrategies.launch(intent)
     }
 
     private fun setupNumberSummary(key: String, descriptionResId: Int) {
