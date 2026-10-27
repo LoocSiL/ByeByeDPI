@@ -8,6 +8,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.edit
 import androidx.preference.*
 import io.github.romanvht.byedpi.R
 import io.github.romanvht.byedpi.utility.*
