@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="byedpi_docs">https://github.com/hufrea/byedpi/blob/main/README.md</string>
     <string name="app_name">ByeByeDPI</string>
     <string name="cmd_documentation">Документация ByeDPI</string>
@@ -24,7 +24,16 @@
     <string name="save_logs">Сохранить логи</string>
     <string name="close_app">Остановить</string>
     <string name="reset_settings">Сбросить настройки</string>
-    <string name="test_export_results">Экспорт результатов</string>
+    <string name="test_settings_import_file">Импорт стратегий из файла</string>
+    <string name="test_settings_export_file">Экспорт стратегий в файл</string>
+    <string name="import_file_summary_loaded">Файл: %1$s</string>
+    <string name="import_file_summary_empty">Файл strategies.txt не найден — будут использоваться команды из поля ниже</string>
+    <string name="import_file_done">Импортировано стратегий: %1$d</string>
+    <string name="import_file_empty">В файле нет рабочих стратегий</string>
+    <string name="import_file_failed">Не удалось прочитать файл</string>
+    <string name="export_file_done">Сохранено в: %1$s</string>
+    <string name="export_file_empty">Список стратегий пуст</string>
+    <string name="export_file_failed">Не удалось сохранить файл</string>    <string name="test_export_results">Экспорт результатов</string>
     <string name="results_empty">Нет завершённых стратегий для экспорта</string>
     <string name="results_saved">Результаты сохранены</string>
     <string name="results_save_failed">Не удалось сохранить результаты</string>

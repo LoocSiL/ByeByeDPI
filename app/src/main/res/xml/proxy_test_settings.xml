@@ -54,6 +54,16 @@
         android:title="@string/test_settings_usercommands"
         app:iconSpaceReserved="false" />
 
+    <Preference
+        android:key="byedpi_proxytest_import_file"
+        android:title="@string/test_settings_import_file"
+        app:iconSpaceReserved="false" />
+
+    <Preference
+        android:key="byedpi_proxytest_export_file"
+        android:title="@string/test_settings_export_file"
+        app:iconSpaceReserved="false" />
+
     <EditTextPreference
         android:key="byedpi_proxytest_commands"
         android:title="@string/test_settings_commands"
