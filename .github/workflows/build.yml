@@ -1,0 +1,68 @@
+name: Build APK
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Сборка release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout с сабмодулями
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: NDK и CMake
+        run: |
+          sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - name: Кэш Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Права на gradlew
+        run: chmod +x ./gradlew
+
+      - name: Сборка release
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Обычная debug-сборка (если release не подписан)
+        if: failure()
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Загрузить APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: byebyedpi-apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Отчёт о сборке
+        if: always()
+        run: |
+          echo "### Результат сборки" >> "$GITHUB_STEP_SUMMARY"
+          find app/build/outputs/apk -name '*.apk' -exec ls -lh {} \; 2>/dev/null >> "$GITHUB_STEP_SUMMARY" || echo "APK не найден" >> "$GITHUB_STEP_SUMMARY"
