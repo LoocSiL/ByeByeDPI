@@ -26,10 +26,12 @@ jobs:
 
       - name: Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: NDK и CMake
         run: |
-          sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1"
+          yes | sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1" > /dev/null
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
 
       - name: Кэш Gradle

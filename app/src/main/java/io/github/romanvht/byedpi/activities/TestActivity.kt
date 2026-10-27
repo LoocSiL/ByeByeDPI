@@ -42,6 +42,10 @@ import java.io.File
 
 class TestActivity : BaseActivity() {
 
+    private companion object {
+        private const val TAG = "TestActivity"
+    }
+
     private lateinit var strategiesRecyclerView: RecyclerView
     private lateinit var progressTextView: TextView
     private lateinit var disclaimerTextView: TextView
