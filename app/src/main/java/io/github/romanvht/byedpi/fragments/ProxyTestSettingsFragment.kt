@@ -108,7 +108,7 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         // системного выбора документов, поэтому ACTION_GET_CONTENT не годится.
         val intent = Intent(requireContext(), FileActivity::class.java).apply {
             putExtra(FileActivity.EXTRA_MODE, FileActivity.MODE_OPEN)
-            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_RESULTS)
+            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_STRATEGIES)
             putExtra(FileActivity.EXTRA_EXTENSION, "txt")
         }
         pickStrategies.launch(intent)
@@ -132,11 +132,14 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
             val target = File(context.getExternalFilesDir(null), STRATEGIES_FILE)
             target.parentFile?.mkdirs()
             target.writeText(text)
-            // Продублировать в настройки, чтобы стратегии были видны и без файла
+            // Записать в настройки и заставить поле перечитать значение:
+            // EditTextPreference кэширует текст и сам не подхватывает внешнюю запись.
             sharedPreferences?.edit {
                 putBoolean("byedpi_proxytest_usercommands", true)
                 putString("byedpi_proxytest_commands", text)
             }
+            findPreference<EditTextPreference>("byedpi_proxytest_commands")?.text = text
+            findPreference<SwitchPreference>("byedpi_proxytest_usercommands")?.isChecked = true
             Toast.makeText(context, getString(R.string.import_file_done, usable), Toast.LENGTH_SHORT).show()
             updatePreferences()
         } catch (exception: Exception) {
@@ -152,7 +155,7 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         val data = result.data ?: return@registerForActivityResult
         val path = data.getStringExtra(FileActivity.EXTRA_PATH) ?: return@registerForActivityResult
         val uri = data.data
-        val content = sharedPreferences?.getString("byedpi_proxytest_commands", "").orEmpty()
+        val content = currentStrategiesText()
         if (content.isBlank()) return@registerForActivityResult
         val context = requireContext()
         try {
@@ -174,9 +177,17 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
+    private fun currentStrategiesText(): String {
+        val fromPrefs = sharedPreferences?.getString("byedpi_proxytest_commands", "").orEmpty()
+        if (fromPrefs.isNotBlank()) return fromPrefs
+        // Поле в настройках могло остаться пустым, хотя файл уже загружен
+        val file = File(requireContext().getExternalFilesDir(null), STRATEGIES_FILE)
+        return if (file.exists()) runCatching { file.readText() }.getOrDefault("") else ""
+    }
+
     private fun exportToFile() {
         val context = requireContext()
-        val content = sharedPreferences?.getString("byedpi_proxytest_commands", "").orEmpty()
+        val content = currentStrategiesText()
         if (content.isBlank()) {
             Toast.makeText(context, R.string.export_file_empty, Toast.LENGTH_SHORT).show()
             return
@@ -185,7 +196,7 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         // включая Documents, и файл будет доступен вне приватной папки приложения.
         val intent = Intent(context, FileActivity::class.java).apply {
             putExtra(FileActivity.EXTRA_MODE, FileActivity.MODE_CREATE)
-            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_RESULTS)
+            putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_STRATEGIES)
             putExtra(FileActivity.EXTRA_EXTENSION, "txt")
         }
         saveStrategies.launch(intent)

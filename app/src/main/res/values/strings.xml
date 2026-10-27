@@ -24,6 +24,8 @@
     <string name="save_logs">Сохранить логи</string>
     <string name="close_app">Остановить</string>
     <string name="reset_settings">Сбросить настройки</string>
+    <string name="import_strategies">Импорт стратегий</string>
+    <string name="export_strategies">Экспорт стратегий</string>
     <string name="test_settings_import_file">Импорт стратегий из файла</string>
     <string name="test_settings_export_file">Экспорт стратегий в файл</string>
     <string name="import_file_summary_loaded">Загружено из файла: %1$d байт</string>

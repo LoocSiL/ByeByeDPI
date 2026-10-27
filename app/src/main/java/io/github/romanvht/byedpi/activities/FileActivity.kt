@@ -38,6 +38,7 @@ class FileActivity : BaseActivity() {
         const val TYPE_SETTINGS = "settings"
         const val TYPE_LOGS = "logs"
         const val TYPE_RESULTS = "results"
+        const val TYPE_STRATEGIES = "strategies"
 
         private const val STATE_CURRENT_DIRECTORY = "current_directory"
         private const val STATE_EXTERNAL_REQUEST = "external_request_active"
@@ -57,7 +58,11 @@ class FileActivity : BaseActivity() {
 
     // Для импорта стратегий расширение задаётся вызывающим, иначе прежние значения.
     private val extension: String
-        get() = intent.getStringExtra(EXTRA_EXTENSION) ?: if (type == TYPE_LOGS) "log" else "json"
+        get() = intent.getStringExtra(EXTRA_EXTENSION) ?: when (type) {
+            TYPE_LOGS -> "log"
+            TYPE_STRATEGIES -> "txt"
+            else -> "json"
+        }
     private val defaultFileName by lazy {
         val format = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault())
         val prefix = when (type) {
@@ -104,6 +109,8 @@ class FileActivity : BaseActivity() {
         setupToolbar()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         val title = when {
+            type == TYPE_STRATEGIES && mode == MODE_CREATE -> R.string.export_strategies
+            type == TYPE_STRATEGIES -> R.string.import_strategies
             type == TYPE_LOGS -> R.string.save_logs
             type == TYPE_RESULTS -> R.string.save_results
             mode == MODE_CREATE -> R.string.export_settings
