@@ -37,6 +37,7 @@ class TestService : Service() {
         private const val TAG = "TestService"
         private const val CHANNEL = "Proxy test"
         private const val RESULTS_FILE = "proxy_test_results.json"
+        private const val STRATEGIES_FILE = "strategies.txt"
         private const val NOTIFICATION_ID = 4
         private val mutableState = MutableStateFlow(TestState())
         private val resultsLock = Any()
@@ -337,7 +338,7 @@ class TestService : Service() {
         val prefs = getPreferences()
         val userCommands = prefs.getBoolean("byedpi_proxytest_usercommands", false)
         val sniValue = prefs.getStringNotNull("byedpi_proxytest_sni", "google.com")
-        val content = if (userCommands) prefs.getStringNotNull("byedpi_proxytest_commands", "")
+        val content = if (userCommands) loadUserStrategies()
         else assets.open("proxytest_strategies.list").bufferedReader().use { it.readText() }
         val commands = content.replace("{sni}", "\"${sniValue}\"").lines().map { it.trim() }.filter { it.isNotEmpty() }
         val host = prefs.getStringNotNull("byedpi_proxy_ip", "127.0.0.1")
@@ -349,6 +350,41 @@ class TestService : Service() {
         DomainListUtils.syncLists(this)
         return TestSettings(DomainListUtils.getActiveDomains(this).toList(), commands, host, port,
             delaySec, requestsCount, requestTimeout, requestLimit)
+    }
+
+    /**
+     * Пользовательские стратегии.
+     *
+     * Если во внешней папке приложения лежит strategies.txt — берём его.
+     * Файл кладётся без root: /sdcard/Android/data/<pkg>/files/strategies.txt
+     * Формат: одна стратегия на строку, строки, начинающиеся с #, игнорируются.
+     * Если файла нет или он пуст — откатываемся на текст из настроек.
+     */
+    private fun loadUserStrategies(): String {
+        val prefs = getPreferences()
+        val fallback = prefs.getStringNotNull("byedpi_proxytest_commands", "")
+        val externalFile = File(getExternalFilesDir(null), STRATEGIES_FILE)
+        if (externalFile.exists()) {
+            try {
+                if (externalFile.length() == 0L) {
+                    Log.w(TAG, "User strategies file is empty, using preferences")
+                    return fallback
+                }
+                val text = externalFile.readText().replace("\r\n", "\n")
+                val usable = text.lines()
+                    .map { it.trim() }
+                    .count { it.isNotEmpty() && !it.startsWith("#") }
+                if (usable == 0) {
+                    Log.w(TAG, "User strategies file has no usable lines, using preferences")
+                    return fallback
+                }
+                Log.i(TAG, "Loaded $usable user strategies from ${externalFile.absolutePath}")
+                return text
+            } catch (exception: Exception) {
+                Log.e(TAG, "Failed to read user strategies file", exception)
+            }
+        }
+        return fallback
     }
 
     private fun resetStrategyResult(strategy: StrategyResult, settings: TestSettings) {

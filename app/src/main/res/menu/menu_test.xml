@@ -7,6 +7,11 @@
         android:title="@string/test_log_copy"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_export_results"
+        android:icon="@drawable/baseline_content_copy_24"
+        android:title="@string/test_export_results"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_settings"
         android:icon="@drawable/baseline_settings_24"
         android:title="@string/title_settings"

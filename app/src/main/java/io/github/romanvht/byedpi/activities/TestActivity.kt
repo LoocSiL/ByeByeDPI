@@ -2,8 +2,10 @@ package io.github.romanvht.byedpi.activities
 
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -11,6 +13,7 @@ import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -33,6 +36,9 @@ import io.github.romanvht.byedpi.utility.mode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 class TestActivity : BaseActivity() {
 
@@ -118,6 +124,10 @@ class TestActivity : BaseActivity() {
         return when (item.itemId) {
             R.id.action_copy_log -> {
                 copyLog()
+                true
+            }
+            R.id.action_export_results -> {
+                exportResults()
                 true
             }
             R.id.action_settings -> {
@@ -228,5 +238,103 @@ class TestActivity : BaseActivity() {
         clipboard.setPrimaryClip(clip)
 
         Toast.makeText(this, R.string.toast_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private val resultsRegister = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val uri = data.data
+        val path = data.getStringExtra(FileActivity.EXTRA_PATH)
+        val file = if (path == null) null else File(path)
+        if (uri == null && file == null) return@registerForActivityResult
+
+        writeResults(uri, file)
+    }
+
+    private fun exportResults() {
+        if (strategies.none { it.isCompleted }) {
+            Toast.makeText(this, R.string.results_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(this, FileActivity::class.java)
+        intent.putExtra(FileActivity.EXTRA_MODE, FileActivity.MODE_CREATE)
+        intent.putExtra(FileActivity.EXTRA_TYPE, FileActivity.TYPE_RESULTS)
+        resultsRegister.launch(intent)
+    }
+
+    /**
+     * Полный отчёт по всем завершённым стратегиям: команда, общий счёт,
+     * разбивка по каждому проверенному сайту и доля успеха.
+     * Пишется и в выбранный файл, и во внешнюю папку приложения как страховка.
+     */
+    private fun writeResults(uri: Uri?, file: File?) {
+        val payload = buildResultsJson()
+        lifecycleScope.launch(Dispatchers.IO) {
+            var written = false
+            try {
+                val stream = when {
+                    uri != null -> contentResolver.openOutputStream(uri)
+                    file != null -> file.outputStream()
+                    else -> null
+                }
+                if (stream != null) {
+                    stream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+                    written = true
+                }
+            } catch (exception: Exception) {
+                Log.e(TAG, "Failed to write results", exception)
+            }
+
+            if (!written) {
+                val fallback = File(getExternalFilesDir(null), "results_export.json")
+                try {
+                    fallback.writeText(payload)
+                    written = true
+                    Log.i(TAG, "Results saved to ${fallback.absolutePath}")
+                } catch (exception: Exception) {
+                    Log.e(TAG, "Failed to write results fallback", exception)
+                }
+            }
+
+            val saved = written
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@TestActivity,
+                    if (saved) R.string.results_saved else R.string.results_save_failed,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun buildResultsJson(): String {
+        val complete = strategies.filter { it.isCompleted }
+        val root = JSONObject()
+        root.put("app", "io.github.romanvht.byedpi")
+        root.put("export", "proxy_test_results")
+        root.put("timestamp", System.currentTimeMillis())
+        val strategiesArray = JSONArray()
+        complete.forEach { strategy ->
+            val item = JSONObject()
+            item.put("command", strategy.command)
+            item.put("successCount", strategy.successCount)
+            item.put("totalRequests", strategy.totalRequests)
+            item.put("successPercentage", strategy.successPercentage)
+            val sites = JSONArray()
+            strategy.siteResults.forEach { site ->
+                val siteObject = JSONObject()
+                siteObject.put("site", site.site)
+                siteObject.put("successCount", site.successCount)
+                siteObject.put("totalCount", site.totalCount)
+                siteObject.put("percentage", if (site.totalCount > 0) site.successCount * 100 / site.totalCount else 0)
+                sites.put(siteObject)
+            }
+            item.put("sites", sites)
+            strategiesArray.put(item)
+        }
+        root.put("strategies", strategiesArray)
+        return root.toString(2)
     }
 }

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="byedpi_docs">https://github.com/hufrea/byedpi/blob/main/README.md</string>
     <string name="app_name">ByeByeDPI</string>
     <string name="cmd_documentation">Документация ByeDPI</string>
@@ -24,6 +24,11 @@
     <string name="save_logs">Сохранить логи</string>
     <string name="close_app">Остановить</string>
     <string name="reset_settings">Сбросить настройки</string>
+    <string name="test_export_results">Экспорт результатов</string>
+    <string name="results_empty">Нет завершённых стратегий для экспорта</string>
+    <string name="results_saved">Результаты сохранены</string>
+    <string name="results_save_failed">Не удалось сохранить результаты</string>
+    <string name="save_results">Сохранить результаты теста</string>
     <string name="export_settings">Экспорт настроек</string>
     <string name="import_settings">Импорт настроек</string>
     <string name="backup_settings">Основные настройки</string>
