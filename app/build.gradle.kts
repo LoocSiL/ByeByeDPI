@@ -18,7 +18,7 @@ android {
         //noinspection OldTargetApi
         targetSdk = 34
         versionCode = 1820
-        versionName = "1.8.2"
+        versionName = "1.8.2-loocsil"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
