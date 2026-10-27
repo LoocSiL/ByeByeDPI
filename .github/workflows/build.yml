@@ -44,47 +44,35 @@ jobs:
       - name: Права на gradlew
         run: chmod +x ./gradlew
 
-      # Debug-сборка подписывается отладочным ключом Gradle автоматически,
-      # поэтому её можно установить на устройство без keystore и секретов.
-      - name: Сборка debug (подписанный APK)
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-
-      - name: Подпись release, если заданы секреты
-        continue-on-error: true
+      # Keystore из секретов -> переменные окружения, которые читает build.gradle.kts.
+      # Благодаря этому debug и release подписываются одним и тем же стабильным ключом,
+      # и сборку можно обновлять на устройстве без переустановки.
+      - name: Подготовка подписи
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::notice::Секреты подписи не заданы — только debug APK"
-            exit 0
-          fi
-          ./gradlew assembleRelease --stacktrace --no-daemon
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          mkdir -p signed
-          for apk in app/build/outputs/apk/release/*-unsigned.apk; do
-            [ -e "$apk" ] || continue
-            base=$(basename "$apk" -unsigned.apk)
-            "$BT/zipalign" -p -f 4 "$apk" "signed/$base-aligned.apk"
-            "$BT/apksigner" sign \
-              --ks "$RUNNER_TEMP/release.keystore" \
-              --ks-pass "pass:$KEYSTORE_PASSWORD" \
-              --ks-key-alias "$KEY_ALIAS" \
-              --key-pass "pass:$KEY_PASSWORD" \
-              --out "signed/$base-signed.apk" "signed/$base-aligned.apk"
-            "$BT/apksigner" verify --print-certs "signed/$base-signed.apk" | head -2
-          done
-          rm -f signed/*-aligned.apk
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          echo "RELEASE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Сборка debug (устанавливается на устройство)
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Сборка release
+        continue-on-error: true
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Загрузить APK
         uses: actions/upload-artifact@v4
         with:
           name: byebyedpi-apk
           path: |
-            signed/*.apk
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
           if-no-files-found: warn

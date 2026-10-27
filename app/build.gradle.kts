@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
@@ -6,6 +7,19 @@ plugins {
 }
 
 val abis = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+
+// Подпись release берётся из переменных окружения, которые workflow
+// выставляет из одноимённых секретов репозитория. Если их нет — release
+// собирается неподписанным, а для установки используется debug-вариант.
+val releaseKeystorePath: String? = System.getenv("RELEASE_KEYSTORE_PATH")
+val releaseKeystorePassword: String? = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias: String? = System.getenv("RELEASE_KEY_ALIAS")
+val releaseKeyPassword: String? = System.getenv("RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = releaseKeystorePath != null &&
+        File(releaseKeystorePath).exists() &&
+        releaseKeystorePassword != null &&
+        releaseKeyAlias != null &&
+        releaseKeyPassword != null
 
 android {
     namespace = "io.github.romanvht.byedpi"
@@ -32,15 +46,34 @@ android {
         viewBinding = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = File(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}\"")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             isMinifyEnabled = true
             isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             buildConfigField("String", "VERSION_NAME",  "\"${defaultConfig.versionName}-debug\"")
+            // Стабильная debug-подпись из репозитория, если она задана:
+            // это позволяет обновлять debug-сборку поверх, не переустанавливая.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
