@@ -64,6 +64,11 @@
         android:title="@string/test_settings_export_file"
         app:iconSpaceReserved="false" />
 
+    <Preference
+        android:key="byedpi_proxytest_edit_list"
+        android:title="@string/strategies_open_editor"
+        app:iconSpaceReserved="false" />
+
     <EditTextPreference
         android:key="byedpi_proxytest_commands"
         android:title="@string/test_settings_commands"

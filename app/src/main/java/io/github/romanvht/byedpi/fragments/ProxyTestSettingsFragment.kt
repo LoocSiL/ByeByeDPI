@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.preference.*
 import io.github.romanvht.byedpi.R
+import io.github.romanvht.byedpi.activities.EditStrategiesActivity
 import io.github.romanvht.byedpi.activities.FileActivity
 import io.github.romanvht.byedpi.utility.*
 import java.io.File
@@ -55,6 +56,13 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("byedpi_proxytest_import_file")?.setOnPreferenceClickListener {
             startImport()
+            true
+        }
+
+        findPreference<Preference>("byedpi_proxytest_edit_list")?.setOnPreferenceClickListener {
+            startActivity(
+                Intent(requireContext(), EditStrategiesActivity::class.java)
+            )
             true
         }
 
@@ -131,14 +139,18 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
             }
             val target = File(context.getExternalFilesDir(null), STRATEGIES_FILE)
             target.parentFile?.mkdirs()
+            // В настройки пишется только рабочие строки: комментарии из файла
+            // нужны при чтении, но в поле списка они мешают и съедают лимит теста.
+            val cleaned = text.lines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .joinToString("\n")
             target.writeText(text)
-            // Записать в настройки и заставить поле перечитать значение:
-            // EditTextPreference кэширует текст и сам не подхватывает внешнюю запись.
             sharedPreferences?.edit {
                 putBoolean("byedpi_proxytest_usercommands", true)
-                putString("byedpi_proxytest_commands", text)
+                putString("byedpi_proxytest_commands", cleaned)
             }
-            findPreference<EditTextPreference>("byedpi_proxytest_commands")?.text = text
+            findPreference<EditTextPreference>("byedpi_proxytest_commands")?.text = cleaned
             findPreference<SwitchPreference>("byedpi_proxytest_usercommands")?.isChecked = true
             Toast.makeText(context, getString(R.string.import_file_done, usable), Toast.LENGTH_SHORT).show()
             updatePreferences()

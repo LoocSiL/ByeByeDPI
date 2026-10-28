@@ -24,7 +24,11 @@
     <string name="save_logs">Сохранить логи</string>
     <string name="close_app">Остановить</string>
     <string name="reset_settings">Сбросить настройки</string>
-    <string name="import_strategies">Импорт стратегий</string>
+    <string name="edit_strategies">Редактор стратегий</string>
+    <string name="edit_strategies_hint">По одной стратегии на строку. Строки с # игнорируются. Нажмите «Правка», чтобы вызвать клавиатуру, затем «Сохранить».</string>
+    <string name="edit_text">Правка</string>
+    <string name="strategies_saved">Стратегии сохранены</string>
+    <string name="strategies_open_editor">Редактор списка стратегий</string>    <string name="import_strategies">Импорт стратегий</string>
     <string name="export_strategies">Экспорт стратегий</string>
     <string name="test_settings_import_file">Импорт стратегий из файла</string>
     <string name="test_settings_export_file">Экспорт стратегий в файл</string>
