@@ -86,11 +86,10 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun updatePreferences() {
-        val switchUserCommands = findPreferenceNotNull<SwitchPreference>("byedpi_proxytest_usercommands")
-        val textUserCommands = findPreferenceNotNull<EditTextPreference>("byedpi_proxytest_commands")
         val manageDomainLists = findPreferenceNotNull<Preference>("manage_domain_lists")
         val importFile = findPreference<Preference>("byedpi_proxytest_import_file")
         val exportFile = findPreference<Preference>("byedpi_proxytest_export_file")
+        val editList = findPreference<Preference>("byedpi_proxytest_edit_list")
         val activeLists = DomainListUtils.getLists(requireContext()).filter { it.isActive }
 
         manageDomainLists.summary = if (activeLists.isEmpty()) {
@@ -99,7 +98,14 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
             activeLists.joinToString(", ") { it.name }
         }
 
-        textUserCommands.isEnabled = switchUserCommands.isChecked
+        val current = currentStrategiesText()
+        val count = current.lines().count { it.isNotBlank() && !it.startsWith("#") }
+        editList?.summary = if (count > 0) {
+            getString(R.string.edit_list_summary_count, count)
+        } else {
+            getString(R.string.edit_list_summary_empty)
+        }
+        exportFile?.isEnabled = count > 0
 
         val strategiesFile = File(requireContext().getExternalFilesDir(null), STRATEGIES_FILE)
         val hasFile = strategiesFile.exists() && strategiesFile.length() > 0
@@ -108,7 +114,6 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
         } else {
             getString(R.string.import_file_summary_empty)
         }
-        exportFile?.isEnabled = switchUserCommands.isChecked
     }
 
     private fun startImport() {
@@ -150,7 +155,6 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
                 putBoolean("byedpi_proxytest_usercommands", true)
                 putString("byedpi_proxytest_commands", cleaned)
             }
-            findPreference<EditTextPreference>("byedpi_proxytest_commands")?.text = cleaned
             findPreference<SwitchPreference>("byedpi_proxytest_usercommands")?.isChecked = true
             Toast.makeText(context, getString(R.string.import_file_done, usable), Toast.LENGTH_SHORT).show()
             updatePreferences()

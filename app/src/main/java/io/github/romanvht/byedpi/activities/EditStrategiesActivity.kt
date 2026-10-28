@@ -1,21 +1,23 @@
 package io.github.romanvht.byedpi.activities
 
-import android.content.Intent
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
-import android.widget.Toast
-import io.github.romanvht.byedpi.R
 import androidx.core.content.edit
+import io.github.romanvht.byedpi.R
 import io.github.romanvht.byedpi.utility.getPreferences
 
 /**
- * Полноэкранный редактор списка стратегий.
+ * Полноэкранный просмотр и правка списка стратегий.
  *
- * Отдельная активность, а не диалог: диалог на телевизоре перекрывается экранной
- * клавиатурой, и пультом до текста не добраться. Здесь поле занимает весь экран,
- * клавиатура вызывается по кнопке «Правка», а кнопка сохранения — в меню.
+ * Клавиатура спрятана по умолчанию: пульт листает текст и ставит курсор.
+ * Клавиатура вызывается центральной кнопкой пульта на нужном месте и убирается
+ * кнопкой «Назад». Сохранение — в меню.
  */
 class EditStrategiesActivity : BaseActivity() {
 
@@ -23,16 +25,54 @@ class EditStrategiesActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.dialog_edit_strategies)
+        setContentView(R.layout.activity_edit_strategies)
         setupToolbar()
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setTitle(R.string.edit_strategies)
 
         textView = findViewById(R.id.strategies_text)
         textView.setText(getPreferences().getString("byedpi_proxytest_commands", "").orEmpty())
-        // Курсор в начало: иначе он оказывается в конце и пультом до верха не добраться
         textView.setSelection(0)
         textView.clearFocus()
+
+        // Центральная кнопка пульта на поле вызывает клавиатуру. Сама клавиатура
+        // не открывается сразу, чтобы не перекрывать текст и не ломать навигацию.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() = handleBack()
+        })
+        textView.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                showKeyboard()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun inputMethodManager(): InputMethodManager =
+        getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
+    private fun showKeyboard() {
+        textView.requestFocus()
+        textView.setSelection(textView.selectionStart.coerceAtLeast(0))
+        inputMethodManager().showSoftInput(textView, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun hideKeyboard() {
+        inputMethodManager().hideSoftInputFromWindow(textView.windowToken, 0)
+        textView.clearFocus()
+    }
+
+    /** «Назад» убирает клавиатуру, если она открыта; иначе сохраняет и закрывает экран. */
+    private fun handleBack() {
+        if (inputMethodManager().isAcceptingText) {
+            hideKeyboard()
+        } else {
+            save()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -45,30 +85,33 @@ class EditStrategiesActivity : BaseActivity() {
             save()
             true
         }
-        R.id.action_edit_strategies -> {
-            textView.requestFocus()
-            textView.setSelection(textView.text.length)
+        R.id.action_keyboard -> {
+            if (inputMethodManager().isAcceptingText) hideKeyboard() else showKeyboard()
             true
         }
         android.R.id.home -> {
-            onBackPressedDispatcher.onBackPressed()
+            handleBack()
             true
         }
         else -> super.onOptionsItemSelected(item)
     }
 
     private fun save() {
-        val text = textView.text.toString()
+        val text = textView.text?.toString().orEmpty()
+        val cleaned = text.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") }
+            .joinToString("\n")
         getPreferences().edit {
-            putString("byedpi_proxytest_commands", text)
-            putBoolean("byedpi_proxytest_usercommands", text.isNotBlank())
+            putString("byedpi_proxytest_commands", cleaned)
+            putBoolean("byedpi_proxytest_usercommands", cleaned.isNotBlank())
         }
-        Toast.makeText(this, R.string.strategies_saved, Toast.LENGTH_SHORT).show()
-        setResult(RESULT_OK, Intent().putExtra(EXTRA_SAVED, true))
+        Log.i(TAG, "Saved strategies: ${cleaned.lines().count { it.isNotBlank() }}")
+        setResult(RESULT_OK)
         finish()
     }
 
-    companion object {
-        const val EXTRA_SAVED = "saved"
+    private companion object {
+        private const val TAG = "EditStrategies"
     }
 }

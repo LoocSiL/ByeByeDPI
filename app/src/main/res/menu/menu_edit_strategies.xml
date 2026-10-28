@@ -7,8 +7,8 @@
         android:title="@string/save"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_edit_strategies"
-        android:icon="@drawable/ic_description"
-        android:title="@string/edit_text"
+        android:id="@+id/action_keyboard"
+        android:icon="@drawable/ic_terminal"
+        android:title="@string/keyboard_toggle"
         app:showAsAction="ifRoom" />
 </menu>

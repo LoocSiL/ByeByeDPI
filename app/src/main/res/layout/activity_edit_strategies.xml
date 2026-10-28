@@ -2,21 +2,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
+
+    <include layout="@layout/app_toolbar" />
 
     <TextView
+        android:id="@+id/edit_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
         android:paddingBottom="8dp"
         android:text="@string/edit_strategies_hint"
-        android:textSize="14sp" />
+        android:textSize="13sp" />
 
     <EditText
         android:id="@+id/strategies_text"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@null"
         android:gravity="top|start"
         android:importantForAutofill="no"
         android:inputType="textMultiLine|textNoSuggestions"
