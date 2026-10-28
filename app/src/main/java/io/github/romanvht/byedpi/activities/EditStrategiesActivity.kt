@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
-import android.view.Menu
-import android.view.MenuItem
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.core.content.edit
@@ -16,12 +14,15 @@ import io.github.romanvht.byedpi.utility.getPreferences
  * Полноэкранный просмотр и правка списка стратегий.
  *
  * Клавиатура спрятана по умолчанию: пульт листает текст и ставит курсор.
- * Клавиатура вызывается центральной кнопкой пульта на нужном месте и убирается
- * кнопкой «Назад». Сохранение — в меню.
+ * ОК на тексте вызывает клавиатуру ровно в позиции курсора, «Назад» её прячет.
+ * Любой выход с экрана сохраняет изменения — отдельной кнопки сохранения нет.
  */
 class EditStrategiesActivity : BaseActivity() {
 
     private lateinit var textView: EditText
+
+    /** Позиция курсора, зафиксированная перед показом клавиатуры. */
+    private var savedSelection = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,15 +36,17 @@ class EditStrategiesActivity : BaseActivity() {
         textView.setSelection(0)
         textView.clearFocus()
 
-        // Центральная кнопка пульта на поле вызывает клавиатуру. Сама клавиатура
-        // не открывается сразу, чтобы не перекрывать текст и не ломать навигацию.
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = handleBack()
         })
+
         textView.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_UP &&
                 (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
             ) {
+                // Запоминаем позицию до запроса фокуса: при получении фокуса
+                // поле само ставит курсор в конец, и он «улетал».
+                savedSelection = textView.selectionStart.coerceIn(0, textView.text?.length ?: 0)
                 showKeyboard()
                 true
             } else {
@@ -56,12 +59,18 @@ class EditStrategiesActivity : BaseActivity() {
         getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
     private fun showKeyboard() {
+        // Сначала фокус и восстановление позиции, только потом показ клавиатуры.
         textView.requestFocus()
-        textView.setSelection(textView.selectionStart.coerceAtLeast(0))
+        val length = textView.text?.length ?: 0
+        val pos = savedSelection.coerceIn(0, length)
+        textView.setSelection(pos)
         inputMethodManager().showSoftInput(textView, InputMethodManager.SHOW_IMPLICIT)
+        // Некоторые прошивки сдвигают курсор при появлении IME — ставим ещё раз.
+        textView.post { textView.setSelection(pos.coerceIn(0, textView.text?.length ?: 0)) }
     }
 
     private fun hideKeyboard() {
+        savedSelection = textView.selectionStart.coerceIn(0, textView.text?.length ?: 0)
         inputMethodManager().hideSoftInputFromWindow(textView.windowToken, 0)
         textView.clearFocus()
     }
@@ -75,28 +84,18 @@ class EditStrategiesActivity : BaseActivity() {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_edit_strategies, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        R.id.action_save_strategies -> {
-            save()
-            true
-        }
-        R.id.action_keyboard -> {
-            if (inputMethodManager().isAcceptingText) hideKeyboard() else showKeyboard()
-            true
-        }
-        android.R.id.home -> {
-            handleBack()
-            true
-        }
-        else -> super.onOptionsItemSelected(item)
+    /** Сохранение при любом способе выхода: системная кнопка «назад» тоже сюда попадает. */
+    override fun onPause() {
+        super.onPause()
+        persist()
     }
 
     private fun save() {
+        persist()
+        finish()
+    }
+
+    private fun persist() {
         val text = textView.text?.toString().orEmpty()
         val cleaned = text.lines()
             .map { it.trim() }
@@ -107,8 +106,6 @@ class EditStrategiesActivity : BaseActivity() {
             putBoolean("byedpi_proxytest_usercommands", cleaned.isNotBlank())
         }
         Log.i(TAG, "Saved strategies: ${cleaned.lines().count { it.isNotBlank() }}")
-        setResult(RESULT_OK)
-        finish()
     }
 
     private companion object {
