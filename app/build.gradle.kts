@@ -31,8 +31,8 @@ android {
         minSdk = 21
         //noinspection OldTargetApi
         targetSdk = 34
-        versionCode = 1820
-        versionName = "1.8.2-loocsil"
+        versionCode = 1821
+        versionName = "1.8.2-loocsil.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
