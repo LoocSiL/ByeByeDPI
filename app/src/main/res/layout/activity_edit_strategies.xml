@@ -17,20 +17,13 @@
         android:text="@string/edit_strategies_hint"
         android:textSize="13sp" />
 
-    <EditText
-        android:id="@+id/strategies_text"
+    <ListView
+        android:id="@+id/strategies_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:background="@null"
-        android:gravity="top|start"
-        android:importantForAutofill="no"
-        android:inputType="textMultiLine|textNoSuggestions"
-        android:scrollbars="vertical"
-        android:textSize="14sp"
-        android:typeface="monospace" />
+        android:divider="@null"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp" />
 
 </LinearLayout>

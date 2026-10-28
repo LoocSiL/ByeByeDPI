@@ -1,25 +1,32 @@
 package io.github.romanvht.byedpi.activities
 
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.KeyEvent
-import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.ListView
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.romanvht.byedpi.R
 import io.github.romanvht.byedpi.utility.getPreferences
 
 /**
- * Полноэкранный просмотр и правка списка стратегий.
+ * Список стратегий построчно.
  *
- * Клавиатура спрятана по умолчанию: пульт листает текст и ставит курсор.
- * ОК на тексте вызывает клавиатуру, «Назад» её прячет.
- * Любой выход с экрана сохраняет изменения — отдельной кнопки сохранения нет.
+ * Многострочное поле ввода на телевизоре не работает с пультом: курсор уходит
+ * в конец и не двигается. Поэтому здесь каждая стратегия — отдельный пункт
+ * списка: пульт ходит по строкам, ОК открывает правку одной строки,
+ * меню позволяет добавить, удалить или переименовать по порядку.
  */
 class EditStrategiesActivity : BaseActivity() {
 
-    private lateinit var textView: EditText
+    private lateinit var listView: ListView
+    private lateinit var adapter: StrategyAdapter
+    private val lines = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,57 +35,71 @@ class EditStrategiesActivity : BaseActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setTitle(R.string.edit_strategies)
 
-        textView = findViewById(R.id.strategies_text)
-        textView.setText(getPreferences().getString("byedpi_proxytest_commands", "").orEmpty())
-
-        // Фокус НЕ снимаем: clearFocus + requestFocus заставляли поле ставить
-        // курсор в конец текста. Поле держит фокус всё время, меняется только
-        // видимость клавиатуры — курсор при этом остаётся на месте.
-        textView.requestFocus()
-        textView.setSelection(0)
+        lines.addAll(loadStrategies())
+        adapter = StrategyAdapter()
+        listView = findViewById(R.id.strategies_list)
+        listView.adapter = adapter
+        listView.setOnItemClickListener { _, _, position, _ ->
+            editLine(position)
+        }
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() = handleBack()
+            override fun handleOnBackPressed() = save()
         })
+    }
 
-        textView.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_UP &&
-                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
-            ) {
-                showKeyboard()
-                true
-            } else {
-                false
+    private fun loadStrategies(): List<String> {
+        val text = getPreferences().getString("byedpi_proxytest_commands", "").orEmpty()
+        return text.lines().map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("#") }
+    }
+
+    private fun editLine(position: Int) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_strategy, null)
+        val input = view.findViewById<android.widget.EditText>(R.id.strategy_line)
+        input.setText(lines.getOrElse(position) { "" })
+        input.setSelection(input.text.length)
+        input.requestFocus()
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.edit_strategy_title)
+            .setView(view)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val value = input.text?.toString()?.trim().orEmpty()
+                if (value.isNotEmpty()) {
+                    if (position < lines.size) lines[position] = value else lines.add(value)
+                    adapter.notifyDataSetChanged()
+                    persist()
+                }
             }
-        }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.delete) { _, _ ->
+                if (position < lines.size) {
+                    lines.removeAt(position)
+                    adapter.notifyDataSetChanged()
+                    persist()
+                }
+            }
+            .show()
     }
 
-    private fun inputMethodManager(): InputMethodManager =
-        getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    private fun addLine() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_strategy, null)
+        val input = view.findViewById<android.widget.EditText>(R.id.strategy_line)
+        input.requestFocus()
 
-    /** Показывает клавиатуру, не трогая курсор и фокус. */
-    private fun showKeyboard() {
-        inputMethodManager().showSoftInput(textView, InputMethodManager.SHOW_IMPLICIT)
-    }
-
-    /** Прячет клавиатуру; фокус и позиция курсора сохраняются. */
-    private fun hideKeyboard() {
-        inputMethodManager().hideSoftInputFromWindow(textView.windowToken, 0)
-    }
-
-    /** «Назад» убирает клавиатуру, если она открыта; иначе сохраняет и закрывает экран. */
-    private fun handleBack() {
-        if (inputMethodManager().isAcceptingText) {
-            hideKeyboard()
-        } else {
-            save()
-        }
-    }
-
-    /** Сохранение при любом способе выхода: системная кнопка «назад» тоже сюда попадает. */
-    override fun onPause() {
-        super.onPause()
-        persist()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.add_strategy_title)
+            .setView(view)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val value = input.text?.toString()?.trim().orEmpty()
+                if (value.isNotEmpty()) {
+                    lines.add(value)
+                    adapter.notifyDataSetChanged()
+                    persist()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun save() {
@@ -87,16 +108,45 @@ class EditStrategiesActivity : BaseActivity() {
     }
 
     private fun persist() {
-        val text = textView.text?.toString().orEmpty()
-        val cleaned = text.lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith("#") }
-            .joinToString("\n")
+        val cleaned = lines.filter { it.isNotBlank() && !it.startsWith("#") }.joinToString("\n")
         getPreferences().edit {
             putString("byedpi_proxytest_commands", cleaned)
             putBoolean("byedpi_proxytest_usercommands", cleaned.isNotBlank())
         }
-        Log.i(TAG, "Saved strategies: ${cleaned.lines().count { it.isNotBlank() }}")
+        Log.i(TAG, "Saved strategies: ${lines.size}")
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_strategies, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean = when (item.itemId) {
+        R.id.action_add_strategy -> {
+            addLine()
+            true
+        }
+        android.R.id.home -> {
+            save()
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    private inner class StrategyAdapter : BaseAdapter() {
+        override fun getCount(): Int = lines.size
+        override fun getItem(position: Int): Any = lines[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val view = convertView ?: LayoutInflater.from(parent?.context)
+                .inflate(R.layout.item_strategy_line, parent, false)
+            val index = view.findViewById<TextView>(R.id.strategy_index)
+            val text = view.findViewById<TextView>(R.id.strategy_command)
+            index.text = getString(R.string.strategy_index, position + 1)
+            text.text = lines[position]
+            return view
+        }
     }
 
     private companion object {

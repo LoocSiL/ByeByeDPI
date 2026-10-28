@@ -28,8 +28,13 @@
     <string name="edit_list_summary_count">Стратегий: %1$d. Нажмите, чтобы открыть</string>
     <string name="export_file_summary_count">Стратегий: %1$d</string>
     <string name="edit_list_summary_empty">Список пуст. Импортируйте файл</string>
+    <string name="edit_strategy_title">Изменить стратегию</string>
+    <string name="add_strategy_title">Добавить стратегию</string>
+    <string name="edit_strategy_label">Стратегия (одна строка):</string>
+    <string name="strategy_index">#%1$d</string>
+    <string name="delete">Удалить</string>
     <string name="edit_strategies">Редактор стратегий</string>
-    <string name="edit_strategies_hint">Строки с # при сохранении отбрасываются: в тест идут только рабочие стратегии. ОК — клавиатура, Назад — скрыть.</string>
+    <string name="edit_strategies_hint">ОК на строке — изменить или удалить. Кнопка «Добавить» — новая стратегия. Изменения сохраняются при выходе.</string>
     <string name="edit_text">Правка</string>
     <string name="strategies_saved">Стратегии сохранены</string>
     <string name="strategies_open_editor">Редактор списка стратегий</string>    <string name="import_strategies">Импорт стратегий</string>
