@@ -106,11 +106,12 @@ class ProxyTestSettingsFragment : PreferenceFragmentCompat() {
             getString(R.string.edit_list_summary_empty)
         }
 
-        // Работа со своим списком доступна только при включённой галке;
-        // импорт из файла — всегда.
+        // Галка «Использовать свои команды» — главный выключатель:
+        // пока она снята, импорт, экспорт и редактор недоступны.
         val enabled = findPreference<SwitchPreference>("byedpi_proxytest_usercommands")?.isChecked == true
+        importFile?.isEnabled = enabled
         editList?.isEnabled = enabled
-        exportFile?.isEnabled = enabled && count > 0
+        exportFile?.isEnabled = enabled
 
         val strategiesFile = File(requireContext().getExternalFilesDir(null), STRATEGIES_FILE)
         val hasFile = strategiesFile.exists() && strategiesFile.length() > 0

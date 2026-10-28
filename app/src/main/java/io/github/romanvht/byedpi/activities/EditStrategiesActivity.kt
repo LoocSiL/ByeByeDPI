@@ -14,15 +14,12 @@ import io.github.romanvht.byedpi.utility.getPreferences
  * Полноэкранный просмотр и правка списка стратегий.
  *
  * Клавиатура спрятана по умолчанию: пульт листает текст и ставит курсор.
- * ОК на тексте вызывает клавиатуру ровно в позиции курсора, «Назад» её прячет.
+ * ОК на тексте вызывает клавиатуру, «Назад» её прячет.
  * Любой выход с экрана сохраняет изменения — отдельной кнопки сохранения нет.
  */
 class EditStrategiesActivity : BaseActivity() {
 
     private lateinit var textView: EditText
-
-    /** Позиция курсора, зафиксированная перед показом клавиатуры. */
-    private var savedSelection = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,8 +30,12 @@ class EditStrategiesActivity : BaseActivity() {
 
         textView = findViewById(R.id.strategies_text)
         textView.setText(getPreferences().getString("byedpi_proxytest_commands", "").orEmpty())
+
+        // Фокус НЕ снимаем: clearFocus + requestFocus заставляли поле ставить
+        // курсор в конец текста. Поле держит фокус всё время, меняется только
+        // видимость клавиатуры — курсор при этом остаётся на месте.
+        textView.requestFocus()
         textView.setSelection(0)
-        textView.clearFocus()
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = handleBack()
@@ -44,9 +45,6 @@ class EditStrategiesActivity : BaseActivity() {
             if (event.action == KeyEvent.ACTION_UP &&
                 (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
             ) {
-                // Запоминаем позицию до запроса фокуса: при получении фокуса
-                // поле само ставит курсор в конец, и он «улетал».
-                savedSelection = textView.selectionStart.coerceIn(0, textView.text?.length ?: 0)
                 showKeyboard()
                 true
             } else {
@@ -58,21 +56,14 @@ class EditStrategiesActivity : BaseActivity() {
     private fun inputMethodManager(): InputMethodManager =
         getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
+    /** Показывает клавиатуру, не трогая курсор и фокус. */
     private fun showKeyboard() {
-        // Сначала фокус и восстановление позиции, только потом показ клавиатуры.
-        textView.requestFocus()
-        val length = textView.text?.length ?: 0
-        val pos = savedSelection.coerceIn(0, length)
-        textView.setSelection(pos)
         inputMethodManager().showSoftInput(textView, InputMethodManager.SHOW_IMPLICIT)
-        // Некоторые прошивки сдвигают курсор при появлении IME — ставим ещё раз.
-        textView.post { textView.setSelection(pos.coerceIn(0, textView.text?.length ?: 0)) }
     }
 
+    /** Прячет клавиатуру; фокус и позиция курсора сохраняются. */
     private fun hideKeyboard() {
-        savedSelection = textView.selectionStart.coerceIn(0, textView.text?.length ?: 0)
         inputMethodManager().hideSoftInputFromWindow(textView.windowToken, 0)
-        textView.clearFocus()
     }
 
     /** «Назад» убирает клавиатуру, если она открыта; иначе сохраняет и закрывает экран. */

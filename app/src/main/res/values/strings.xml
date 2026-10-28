@@ -29,7 +29,7 @@
     <string name="export_file_summary_count">Стратегий: %1$d</string>
     <string name="edit_list_summary_empty">Список пуст. Импортируйте файл</string>
     <string name="edit_strategies">Редактор стратегий</string>
-    <string name="edit_strategies_hint">ОК на строке — клавиатура. Назад — скрыть клавиатуру и выйти с сохранением.</string>
+    <string name="edit_strategies_hint">Строки с # при сохранении отбрасываются: в тест идут только рабочие стратегии. ОК — клавиатура, Назад — скрыть.</string>
     <string name="edit_text">Правка</string>
     <string name="strategies_saved">Стратегии сохранены</string>
     <string name="strategies_open_editor">Редактор списка стратегий</string>    <string name="import_strategies">Импорт стратегий</string>
