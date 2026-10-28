@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.ListView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.romanvht.byedpi.R
@@ -53,53 +52,79 @@ class EditStrategiesActivity : BaseActivity() {
         return text.lines().map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("#") }
     }
 
-    private fun editLine(position: Int) {
+    /**
+     * Диалог правки одной строки.
+     *
+     * Ширина принудительно растягивается на весь экран: стандартный диалог
+     * оставляет стратегию за пределами окна, и её не видно целиком.
+     */
+    private fun showStrategyDialog(
+        titleRes: Int,
+        initial: String,
+        showDelete: Boolean,
+        onSave: (String) -> Unit
+    ) {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_strategy, null)
         val input = view.findViewById<android.widget.EditText>(R.id.strategy_line)
-        input.setText(lines.getOrElse(position) { "" })
+        input.setText(initial)
         input.setSelection(input.text.length)
         input.requestFocus()
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.edit_strategy_title)
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(titleRes)
             .setView(view)
             .setPositiveButton(R.string.save) { _, _ ->
                 val value = input.text?.toString()?.trim().orEmpty()
-                if (value.isNotEmpty()) {
-                    if (position < lines.size) lines[position] = value else lines.add(value)
-                    adapter.notifyDataSetChanged()
-                    persist()
-                }
+                if (value.isNotEmpty()) onSave(value)
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .setNeutralButton(R.string.delete) { _, _ ->
-                if (position < lines.size) {
-                    lines.removeAt(position)
-                    adapter.notifyDataSetChanged()
-                    persist()
-                }
+
+        if (showDelete) {
+            builder.setNeutralButton(R.string.delete) { _, _ ->
+                onSave("")
             }
-            .show()
+        }
+
+        val dialog = builder.create()
+        dialog.show()
+
+        // Максимальная ширина: на телевизоре диалог по умолчанию занимает
+        // половину экрана, а команды стратегий длинные.
+        val metrics = resources.displayMetrics
+        dialog.window?.setLayout(
+            (metrics.widthPixels * 0.96).toInt(),
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+    }
+
+    private fun editLine(position: Int) {
+        showStrategyDialog(
+            titleRes = R.string.edit_strategy_title,
+            initial = lines.getOrElse(position) { "" },
+            showDelete = true
+        ) { value ->
+            if (value.isEmpty()) {
+                if (position < lines.size) lines.removeAt(position)
+            } else if (position < lines.size) {
+                lines[position] = value
+            } else {
+                lines.add(value)
+            }
+            adapter.notifyDataSetChanged()
+            persist()
+        }
     }
 
     private fun addLine() {
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_strategy, null)
-        val input = view.findViewById<android.widget.EditText>(R.id.strategy_line)
-        input.requestFocus()
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.add_strategy_title)
-            .setView(view)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val value = input.text?.toString()?.trim().orEmpty()
-                if (value.isNotEmpty()) {
-                    lines.add(value)
-                    adapter.notifyDataSetChanged()
-                    persist()
-                }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        showStrategyDialog(
+            titleRes = R.string.add_strategy_title,
+            initial = "",
+            showDelete = false
+        ) { value ->
+            lines.add(value)
+            adapter.notifyDataSetChanged()
+            persist()
+        }
     }
 
     private fun save() {

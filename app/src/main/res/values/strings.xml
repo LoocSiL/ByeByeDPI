@@ -30,6 +30,7 @@
     <string name="edit_list_summary_empty">Список пуст. Импортируйте файл</string>
     <string name="edit_strategy_title">Изменить стратегию</string>
     <string name="add_strategy_title">Добавить стратегию</string>
+    <string name="strategy_hint">-d1 -d3+s -s6+s ...</string>
     <string name="edit_strategy_label">Стратегия (одна строка):</string>
     <string name="strategy_index">#%1$d</string>
     <string name="delete">Удалить</string>
